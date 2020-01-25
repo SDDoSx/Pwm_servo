@@ -1,0 +1,107 @@
+/*
+        Arduino Brushless Motor Control
+     by Alae Moudni, hyperloop at IIT
+*/
+
+
+char buf[80];
+
+int readline(int readch, char *buffer, int len) {
+    static int pos = 0;
+    int rpos;
+
+    if (readch > 0) {
+        switch (readch) {
+            case '\r': // Ignore CR
+                break;
+            case '\n': // Return on new-line
+                rpos = pos;
+                pos = 0;  // Reset position index ready for next time
+                return rpos;
+            default:
+                if (pos < len-1) {
+                    buffer[pos++] = readch;
+                    buffer[pos] = 0;
+                }
+        }
+    }
+    return 0;
+}
+
+
+const int button = 12;
+const int button1 = 11;
+int pwmVal = 0;
+
+#include <Servo.h>
+Servo ESC;     // create servo object to control the ESC
+int potValue;  // value from the analog pin
+void setup() {
+  Serial.begin(115200);
+  Serial.println("Please enter the value that you want for the acceleration (note that val = 0, motor stop. val = 20, motor medium speed. val = 38, motor full speed)");
+  // Attach the ESC on pin 9
+  ESC.attach(9,1000,2000); // (pin, min pulse width, max pulse width in microseconds) 
+  pinMode(button, INPUT_PULLUP);// (button, input pullup)
+  pinMode(button1, INPUT_PULLUP);
+}
+void loop() {
+  potValue = analogRead(A0);   // reads the value of the potentiometer (value between 0 and 1023)
+  potValue = map(potValue, 0, 1023, 0, 180);   // scale it to use it with the servo library (value between 0 and 180)
+  if(digitalRead(button) == LOW){
+    ESC.write(potValue);    // Send the signal to the ESC
+    Serial.println(potValue);
+  }
+  if(digitalRead(button1) == LOW){
+   if(Serial.available()){
+        pwmVal = Serial.read();
+        switch(buf){
+          case 0:
+            Serial.println("stop");
+            ESC.write(20);
+            delay(1500);
+            break;
+           case 1:
+            ESC.write(20);
+            break;
+           case 2:
+            ESC.write(38);
+            break;
+           default:
+            ESC.write(0);
+            Serial.println("none-error");
+            break;
+        
+          
+        }
+        
+        Serial.print("You typed: " );
+        Serial.println(pwmVal);
+    }
+    if (readline(Serial.read(), buf, 80) > 0) {
+        Serial.print("You entered: >");
+        Serial.print(buf);
+        Serial.println("<");
+        int x;
+        sscanf(buf, "%d", &x);
+        
+        if(x == 0)
+          ESC.write(0);
+        else if(x == 1){
+          ESC.write(20);
+          Serial.println("Medium speed");
+        }
+        else if(x == 2){
+          ESC.write(38);
+          Serial.println("Max speed");
+        }
+         else{
+          ESC.write(0);
+          Serial.println("you have an error");
+         }
+        
+    }
+  }
+  
+    
+  
+}
